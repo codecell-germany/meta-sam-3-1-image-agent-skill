@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved
 
 # pyre-unsafe
@@ -9,10 +11,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
 from sam3.model.model_misc import SAM3Output
-from sam3.model.sam1_task_predictor import SAM3InteractiveImagePredictor
 from sam3.model.vl_combiner import SAM3VLBackbone
 from sam3.perflib.nms import nms_masks
-from sam3.train.data.collator import BatchedDatapoint
 
 from .act_ckpt_utils import activation_ckpt_wrapper
 from .box_ops import box_cxcywh_to_xyxy
@@ -55,7 +55,7 @@ class Sam3Image(torch.nn.Module):
         detach_presence_in_joint_score: bool = False,  # only relevant if using presence token/score
         separate_scorer_for_instance: bool = False,
         num_interactive_steps_val: int = 0,
-        inst_interactive_predictor: SAM3InteractiveImagePredictor = None,
+        inst_interactive_predictor=None,
         **kwargs,
     ):
         super().__init__()

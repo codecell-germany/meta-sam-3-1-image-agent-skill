@@ -1,408 +1,633 @@
-# SAM 3: Segment Anything with Concepts
+# meta-sam-3-1-image-agent-skill
 
-Meta Superintelligence Labs
+---
 
-[Nicolas Carion](https://www.nicolascarion.com/)\*,
-[Laura Gustafson](https://scholar.google.com/citations?user=c8IpF9gAAAAJ&hl=en)\*,
-[Yuan-Ting Hu](https://scholar.google.com/citations?user=E8DVVYQAAAAJ&hl=en)\*,
-[Shoubhik Debnath](https://scholar.google.com/citations?user=fb6FOfsAAAAJ&hl=en)\*,
-[Ronghang Hu](https://ronghanghu.com/)\*,
-[Didac Suris](https://www.didacsuris.com/)\*,
-[Chaitanya Ryali](https://scholar.google.com/citations?user=4LWx24UAAAAJ&hl=en)\*,
-[Kalyan Vasudev Alwala](https://scholar.google.co.in/citations?user=m34oaWEAAAAJ&hl=en)\*,
-[Haitham Khedr](https://hkhedr.com/)\*, Andrew Huang,
-[Jie Lei](https://jayleicn.github.io/),
-[Tengyu Ma](https://scholar.google.com/citations?user=VeTSl0wAAAAJ&hl=en),
-[Baishan Guo](https://scholar.google.com/citations?user=BC5wDu8AAAAJ&hl=en),
-Arpit Kalla, [Markus Marks](https://damaggu.github.io/),
-[Joseph Greer](https://scholar.google.com/citations?user=guL96CkAAAAJ&hl=en),
-Meng Wang, [Peize Sun](https://peizesun.github.io/),
-[Roman Rädle](https://scholar.google.com/citations?user=Tpt57v0AAAAJ&hl=en),
-[Triantafyllos Afouras](https://www.robots.ox.ac.uk/~afourast/),
-[Effrosyni Mavroudi](https://scholar.google.com/citations?user=vYRzGGEAAAAJ&hl=en),
-[Katherine Xu](https://k8xu.github.io/)°,
-[Tsung-Han Wu](https://patrickthwu.com/)°,
-[Yu Zhou](https://yu-bryan-zhou.github.io/)°,
-[Liliane Momeni](https://scholar.google.com/citations?user=Lb-KgVYAAAAJ&hl=en)°,
-[Rishi Hazra](https://rishihazra.github.io/)°,
-[Shuangrui Ding](https://mark12ding.github.io/)°,
-[Sagar Vaze](https://sgvaze.github.io/)°,
-[Francois Porcher](https://scholar.google.com/citations?user=LgHZ8hUAAAAJ&hl=en)°,
-[Feng Li](https://fengli-ust.github.io/)°,
-[Siyuan Li](https://siyuanliii.github.io/)°,
-[Aishwarya Kamath](https://ashkamath.github.io/)°,
-[Ho Kei Cheng](https://hkchengrex.com/)°,
-[Piotr Dollar](https://pdollar.github.io/)†,
-[Nikhila Ravi](https://nikhilaravi.com/)†,
-[Kate Saenko](https://ai.bu.edu/ksaenko.html)†,
-[Pengchuan Zhang](https://pzzhang.github.io/pzzhang/)†,
-[Christoph Feichtenhofer](https://feichtenhofer.github.io/)†
+# English
 
-\* core contributor, ° intern, † project lead, order is random within groups
+## Purpose
 
-[[`Paper`](https://ai.meta.com/research/publications/sam-3-segment-anything-with-concepts/)]
-[[`Project`](https://ai.meta.com/sam3)]
-[[`Demo`](https://segment-anything.com/)]
-[[`Blog`](https://ai.meta.com/blog/segment-anything-model-3/)]
-[[`BibTeX`](#citing-sam-3)]
+`meta-sam-3-1-image-agent-skill` turns Meta SAM 3.1 into an agent-friendly image reduction layer.
 
-![SAM 3 architecture](assets/model_diagram.png?raw=true) SAM 3 is a unified foundation model for promptable segmentation in images and videos. It can detect, segment, and track objects using text or visual prompts such as points, boxes, and masks. Compared to its predecessor [SAM 2](https://github.com/facebookresearch/sam2), SAM 3 introduces the ability to exhaustively segment all instances of an open-vocabulary concept specified by a short text phrase or exemplars. Unlike prior work, SAM 3 can handle a vastly larger set of open-vocabulary prompts. It achieves 75-80% of human performance on our new [SA-CO benchmark](https://github.com/facebookresearch/sam3?tab=readme-ov-file#sa-co-dataset) which contains 270K unique concepts, over 50 times more than existing benchmarks.
+The practical goal is not only to segment images, but to help agents work better with images afterward:
 
-This breakthrough is driven by an innovative data engine that has automatically annotated over 4 million unique concepts, creating the largest high-quality open-vocabulary segmentation dataset to date. In addition, SAM 3 introduces a new model architecture featuring a presence token that improves discrimination between closely related text prompts (e.g., “a player in white” vs. “a player in red”), as well as a decoupled detector–tracker design that minimizes task interference and scales efficiently with data.
+- better OCR on relevant image regions instead of the whole frame
+- better object- or component-level analysis through crops
+- better downstream automation through structured JSON metadata
+- better iteration because multiple segmentation runs can coexist without overwriting each other
 
-<p align="center">
-  <img src="assets/dog.gif" width=380 />
-  <img src="assets/player.gif" width=380 />
-</p>
+This repository combines:
 
-## Latest updates
+- the Meta SAM 3.1 model codebase
+- a local CLI surface built around `sam3-cli`
+- a skill payload under `skills/sam3-image-cli/`
+- setup guidance for macOS Apple Silicon and Windows with NVIDIA/CUDA
 
-**03/27/2026 -- SAM 3.1 Object Multiplex is released. It introduces a shared-memory approach for joint multi-object tracking that is significantly faster without sacrificing accuracy.**
+## Public release surfaces
 
-- A new suite of improved model checkpoints (denoted as **SAM 3.1**) are released on [Hugging Face](https://huggingface.co/facebook/sam3.1). See [`RELEASE_SAM3p1.md`](RELEASE_SAM3p1.md) for full details.
-  * To use the new SAM 3.1 checkpoints, you need the latest model code from this repo. If you have installed an earlier version of this repo, pull the latest code from this repo (with `git pull`), and then reinstall the repo following [Installation](#installation) below.
+- GitHub repo:
+  `codecell-germany/meta-sam-3-1-image-agent-skill`
+- npm package:
+  `@codecell-germany/meta-sam-3-1-image-agent-skill`
+- CLI binary:
+  `sam3-cli`
+- skill installer binary:
+  `sam3-image-skill`
+- skill name:
+  `sam3-image-cli`
+
+## What the repository contains
+
+- a local segmentation CLI
+- a skill that teaches agents how to install and use it
+- platform-specific setup guidance
+- references for onboarding and output handling
+- knowledge files for architecture, platform support, limitations, and release hygiene
+
+## Why this matters for agents
+
+Many image tasks get better when the original image is reduced to the most relevant regions first.
+
+Instead of sending one noisy image into OCR or visual reasoning, an agent can:
+
+1. segment the image with Meta SAM 3.1
+2. keep the overlay for quick validation
+3. use the JSON file for structured routing
+4. run OCR or visual analysis on the generated crops
+
+That creates a new operating mode for agent workflows:
+less noise, smaller image regions, clearer semantics, and better follow-up automation.
+
+## Supported platform strategy
+
+- macOS Apple Silicon:
+  verified image segmentation path via `cpu`
+- Windows with NVIDIA/CUDA:
+  intended high-performance path via `cuda`
+
+Important:
+
+- this repo is deliberately positioned around image segmentation
+- video and multiplex tracking are not the default product story here
+- model weights are not stored in this repository
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.12 or higher
-- PyTorch 2.7 or higher
-- CUDA-compatible GPU with CUDA 12.6 or higher
-
-1. **Create a new Conda environment:**
+### 1. Clone the repository
 
 ```bash
-conda create -n sam3 python=3.12
-conda deactivate
-conda activate sam3
+git clone https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill.git
+cd meta-sam-3-1-image-agent-skill
 ```
 
-2. **Install PyTorch with CUDA support:**
+### 2. Create and activate a virtual environment
+
+macOS or Linux:
 
 ```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+```
+
+### 3. Install PyTorch
+
+macOS Apple Silicon:
+
+```bash
+pip install torch==2.10.0 torchvision==0.25.0
+```
+
+Windows with CUDA:
+
+```powershell
 pip install torch==2.10.0 torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
 
-3. **Clone the repository and install the package:**
+### 4. Install the repository
 
 ```bash
-git clone https://github.com/facebookresearch/sam3.git
-cd sam3
 pip install -e .
+pip install einops
 ```
 
-4. **Install additional dependencies for example notebooks or development:**
+### 5. Verify the CLI
 
 ```bash
-# For running example notebooks
-pip install -e ".[notebooks]"
-
-# For development
-pip install -e ".[train,dev]"
+sam3-cli --help
+sam3-cli doctor
 ```
 
-5. **Optional dependencies for faster inference**
-```bash
-pip install einops ninja && pip install flash-attn-3 --no-deps --index-url https://download.pytorch.org/whl/cu128
-pip install git+https://github.com/ronghanghu/cc_torch.git
-```
-
-## Getting Started
-
-⚠️ Before using SAM 3, please request access to the checkpoints on the SAM 3
-Hugging Face [repo](https://huggingface.co/facebook/sam3). Once accepted, you
-need to be authenticated to download the checkpoints. You can do this by running
-the following [steps](https://huggingface.co/docs/huggingface_hub/en/quick-start#authentication)
-(e.g. `hf auth login` after generating an access token.)
-
-### Basic Usage
-
-```python
-import torch
-#################################### For Image ####################################
-from PIL import Image
-from sam3.model_builder import build_sam3_image_model
-from sam3.model.sam3_image_processor import Sam3Processor
-# Load the model
-model = build_sam3_image_model()
-processor = Sam3Processor(model)
-# Load an image
-image = Image.open("<YOUR_IMAGE_PATH.jpg>")
-inference_state = processor.set_image(image)
-# Prompt the model with text
-output = processor.set_text_prompt(state=inference_state, prompt="<YOUR_TEXT_PROMPT>")
-
-# Get the masks, bounding boxes, and scores
-masks, boxes, scores = output["masks"], output["boxes"], output["scores"]
-
-#################################### For Video ####################################
-
-from sam3.model_builder import build_sam3_video_predictor
-
-video_predictor = build_sam3_video_predictor()
-video_path = "<YOUR_VIDEO_PATH>" # a JPEG folder or an MP4 video file
-# Start a session
-response = video_predictor.handle_request(
-    request=dict(
-        type="start_session",
-        resource_path=video_path,
-    )
-)
-response = video_predictor.handle_request(
-    request=dict(
-        type="add_prompt",
-        session_id=response["session_id"],
-        frame_index=0, # Arbitrary frame index
-        text="<YOUR_TEXT_PROMPT>",
-    )
-)
-output = response["outputs"]
-```
-
-## Examples
-
-The `examples` directory contains notebooks demonstrating how to use SAM3 with
-various types of prompts:
-
-- [`sam3_image_predictor_example.ipynb`](examples/sam3_image_predictor_example.ipynb)
-  : Demonstrates how to prompt SAM 3 with text and visual box prompts on images.
-- [`sam3_video_predictor_example.ipynb`](examples/sam3_video_predictor_example.ipynb)
-  : Demonstrates how to prompt SAM 3 with text prompts on videos, and doing
-  further interactive refinements with points.
-- [`sam3_image_batched_inference.ipynb`](examples/sam3_image_batched_inference.ipynb)
-  : Demonstrates how to run batched inference with SAM 3 on images.
-- [`sam3_agent.ipynb`](examples/sam3_agent.ipynb): Demonsterates the use of SAM
-  3 Agent to segment complex text prompt on images.
-- [`saco_gold_silver_vis_example.ipynb`](examples/saco_gold_silver_vis_example.ipynb)
-  : Shows a few examples from SA-Co image evaluation set.
-- [`saco_veval_vis_example.ipynb`](examples/saco_veval_vis_example.ipynb) :
-  Shows a few examples from SA-Co video evaluation set.
-
-There are additional notebooks in the examples directory that demonstrate how to
-use SAM 3 for interactive instance segmentation in images and videos (SAM 1/2
-tasks), or as a tool for an MLLM, and how to run evaluations on the SA-Co
-dataset.
-
-To run the Jupyter notebook examples:
+### 6. Optionally install the skill payload for Codex
 
 ```bash
-# Make sure you have the notebooks dependencies installed
-pip install -e ".[notebooks]"
-
-# Start Jupyter notebook
-jupyter notebook examples/sam3_image_predictor_example.ipynb
+npm install -g @codecell-germany/meta-sam-3-1-image-agent-skill
+sam3-image-skill install --force
 ```
 
-## Model
-
-SAM 3 consists of a detector and a tracker that share a vision encoder. It has 848M parameters. The
-detector is a DETR-based model conditioned on text, geometry, and image
-exemplars. The tracker inherits the SAM 2 transformer encoder-decoder
-architecture, supporting video segmentation and interactive refinement.
-
-## Image Results
-
-<div align="center">
-<table style="min-width: 80%; border: 2px solid #ddd; border-collapse: collapse">
-  <thead>
-    <tr>
-      <th rowspan="3" style="border-right: 2px solid #ddd; padding: 12px 20px">Model</th>
-      <th colspan="3" style="text-align: center; border-right: 2px solid #ddd; padding: 12px 20px">Instance Segmentation</th>
-      <th colspan="5" style="text-align: center; padding: 12px 20px">Box Detection</th>
-    </tr>
-    <tr>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">LVIS</th>
-      <th style="text-align: center; border-right: 2px solid #ddd; padding: 12px 20px">SA-Co/Gold</th>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">LVIS</th>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">COCO</th>
-      <th style="text-align: center; padding: 12px 20px">SA-Co/Gold</th>
-    </tr>
-    <tr>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">AP</th>
-      <th style="text-align: center; border-right: 2px solid #ddd; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">AP</th>
-      <th style="text-align: center; padding: 12px 20px">AP</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">AP<sub>o</sub>
-</th>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">Human</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 2px solid #ddd; padding: 10px 20px">72.8</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">74.0</td>
-    </tr>
-    <tr>
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">OWLv2*</td>
-      <td style="text-align: center; padding: 10px 20px; color: #999">29.3</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px; color: #999">43.4</td>
-      <td style="text-align: center; border-right: 2px solid #ddd; padding: 10px 20px">24.6</td>
-      <td style="text-align: center; padding: 10px 20px; color: #999">30.2</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px; color: #999">45.5</td>
-      <td style="text-align: center; padding: 10px 20px">46.1</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">23.9</td>
-      <td style="text-align: center; padding: 10px 20px">24.5</td>
-    </tr>
-    <tr>
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">DINO-X</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">38.5</td>
-      <td style="text-align: center; border-right: 2px solid #ddd; padding: 10px 20px">21.3</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">52.4</td>
-      <td style="text-align: center; padding: 10px 20px">56.0</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">22.5</td>
-    </tr>
-    <tr>
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">Gemini 2.5</td>
-      <td style="text-align: center; padding: 10px 20px">13.4</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 2px solid #ddd; padding: 10px 20px">13.0</td>
-      <td style="text-align: center; padding: 10px 20px">16.1</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">14.4</td>
-    </tr>
-    <tr style="border-top: 2px solid #b19c9cff">
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">SAM 3</td>
-      <td style="text-align: center; padding: 10px 20px">37.2</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">48.5</td>
-      <td style="text-align: center; border-right: 2px solid #ddd; padding: 10px 20px">54.1</td>
-      <td style="text-align: center; padding: 10px 20px">40.6</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">53.6</td>
-      <td style="text-align: center; padding: 10px 20px">56.4</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">55.7</td>
-      <td style="text-align: center; padding: 10px 20px">55.7</td>
-    </tr>
-  </tbody>
-</table>
-
-<p style="text-align: center; margin-top: 10px; font-size: 0.9em; color: #ddd;">* Partially trained on LVIS, AP<sub>o</sub> refers to COCO-O accuracy</p>
-
-</div>
-
-## Video Results
-
-<div align="center">
-<table style="min-width: 80%; border: 2px solid #ddd; border-collapse: collapse">
-  <thead>
-    <tr>
-      <th rowspan="2" style="border-right: 2px solid #ddd; padding: 12px 20px">Model</th>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">SA-V test</th>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">YT-Temporal-1B test</th>
-      <th colspan="2" style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">SmartGlasses test</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">LVVIS test</th>
-      <th style="text-align: center; padding: 12px 20px">BURST test</th>
-    </tr>
-    <tr>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">pHOTA</th>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">pHOTA</th>
-      <th style="text-align: center; padding: 12px 20px">cgF1</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">pHOTA</th>
-      <th style="text-align: center; border-right: 1px solid #eee; padding: 12px 20px">mAP</th>
-      <th style="text-align: center; padding: 12px 20px">HOTA</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">Human</td>
-      <td style="text-align: center; padding: 10px 20px">53.1</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">70.5</td>
-      <td style="text-align: center; padding: 10px 20px">71.2</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">78.4</td>
-      <td style="text-align: center; padding: 10px 20px">58.5</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">72.3</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">-</td>
-      <td style="text-align: center; padding: 10px 20px">-</td>
-    </tr>
-    <tr style="border-top: 2px solid #b19c9cff">
-      <td style="border-right: 2px solid #ddd; padding: 10px 20px">SAM 3</td>
-      <td style="text-align: center; padding: 10px 20px">30.3</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">58.0</td>
-      <td style="text-align: center; padding: 10px 20px">50.8</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">69.9</td>
-      <td style="text-align: center; padding: 10px 20px">36.4</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">63.6</td>
-      <td style="text-align: center; border-right: 1px solid #eee; padding: 10px 20px">36.3</td>
-      <td style="text-align: center; padding: 10px 20px">44.5</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-## SA-Co Dataset
-
-We release 2 image benchmarks, [SA-Co/Gold](scripts/eval/gold/README.md) and
-[SA-Co/Silver](scripts/eval/silver/README.md), and a video benchmark
-[SA-Co/VEval](scripts/eval/veval/README.md). The datasets contain images (or videos) with annotated noun phrases. Each image/video and noun phrase pair is annotated with instance masks and unique IDs of each object matching the phrase. Phrases that have no matching objects (negative prompts) have no masks, shown in red font in the figure. See the linked READMEs for more details on how to download and run evaluations on the datasets.
-
-* HuggingFace host: [SA-Co/Gold](https://huggingface.co/datasets/facebook/SACo-Gold), [SA-Co/Silver](https://huggingface.co/datasets/facebook/SACo-Silver) and [SA-Co/VEval](https://huggingface.co/datasets/facebook/SACo-VEval)
-* Roboflow host: [SA-Co/Gold](https://universe.roboflow.com/sa-co-gold), [SA-Co/Silver](https://universe.roboflow.com/sa-co-silver) and [SA-Co/VEval](https://universe.roboflow.com/sa-co-veval)
-
-![SA-Co dataset](assets/sa_co_dataset.jpg?raw=true)
-
-## Development
-
-To set up the development environment:
+Or without a global npm install:
 
 ```bash
-pip install -e ".[dev,train]"
+npx -y -p @codecell-germany/meta-sam-3-1-image-agent-skill sam3-image-skill install --force
 ```
 
-To format the code:
+This installs:
+
+- the skill payload under `~/.codex/skills/sam3-image-cli`
+- the runtime files under `~/.codex/tools/sam3-image-cli`
+- CLI shims under `~/.codex/bin/`
+  - `sam3-cli`
+  - `sam3-cli.cmd`
+  - `sam3-cli.ps1`
+
+## Canonical first-run sequence
+
+### 1. Verify the public CLI
 
 ```bash
-ufmt format .
+sam3-cli --help
 ```
 
-## Contributing
+### 2. Check the environment
 
-See [contributing](CONTRIBUTING.md) and the
-[code of conduct](CODE_OF_CONDUCT.md).
-
-## License
-
-This project is licensed under the SAM License - see the [LICENSE](LICENSE) file
-for details.
-
-## Acknowledgements
-
-We would like to thank the following people for their contributions to the SAM 3 project: Alex He, Alexander Kirillov,
-Alyssa Newcomb, Ana Paula Kirschner Mofarrej, Andrea Madotto, Andrew Westbury, Ashley Gabriel, Azita Shokpour,
-Ben Samples, Bernie Huang, Carleigh Wood, Ching-Feng Yeh, Christian Puhrsch, Claudette Ward, Daniel Bolya,
-Daniel Li, Facundo Figueroa, Fazila Vhora, George Orlin, Hanzi Mao, Helen Klein, Hu Xu, Ida Cheng, Jake Kinney,
-Jiale Zhi, Jo Sampaio, Joel Schlosser, Justin Johnson, Kai Brown, Karen Bergan, Karla Martucci, Kenny Lehmann,
-Maddie Mintz, Mallika Malhotra, Matt Ward, Michelle Chan, Michelle Restrepo, Miranda Hartley, Muhammad Maaz,
-Nisha Deo, Peter Park, Phillip Thomas, Raghu Nayani, Rene Martinez Doehner, Robbie Adkins, Ross Girshik, Sasha
-Mitts, Shashank Jain, Spencer Whitehead, Ty Toledano, Valentin Gabeur, Vincent Cho, Vivian Lee, William Ngan,
-Xuehai He, Yael Yungster, Ziqi Pang, Ziyi Dou, Zoe Quake.
-
-## Citing SAM 3
-
-If you use SAM 3 or the SA-Co dataset in your research, please use the following BibTeX entry.
-
-```bibtex
-@misc{carion2025sam3segmentconcepts,
-      title={SAM 3: Segment Anything with Concepts},
-      author={Nicolas Carion and Laura Gustafson and Yuan-Ting Hu and Shoubhik Debnath and Ronghang Hu and Didac Suris and Chaitanya Ryali and Kalyan Vasudev Alwala and Haitham Khedr and Andrew Huang and Jie Lei and Tengyu Ma and Baishan Guo and Arpit Kalla and Markus Marks and Joseph Greer and Meng Wang and Peize Sun and Roman Rädle and Triantafyllos Afouras and Effrosyni Mavroudi and Katherine Xu and Tsung-Han Wu and Yu Zhou and Liliane Momeni and Rishi Hazra and Shuangrui Ding and Sagar Vaze and Francois Porcher and Feng Li and Siyuan Li and Aishwarya Kamath and Ho Kei Cheng and Piotr Dollár and Nikhila Ravi and Kate Saenko and Pengchuan Zhang and Christoph Feichtenhofer},
-      year={2025},
-      eprint={2511.16719},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2511.16719},
-}
+```bash
+sam3-cli doctor
 ```
+
+### 3. If setup is incomplete, print the setup guide
+
+```bash
+sam3-cli setup --language en
+sam3-cli setup --platform macos-apple-silicon --language en
+sam3-cli setup --platform windows-cuda --language en
+```
+
+### 4. Make sure Hugging Face access exists
+
+The user must have approved access to the gated model:
+
+- `facebook/sam3.1`
+
+### 5. Download the checkpoint
+
+```bash
+sam3-cli download --version sam3.1
+```
+
+### 6. Run the first real segmentation
+
+macOS Apple Silicon:
+
+```bash
+sam3-cli image --version sam3.1 --device cpu --image /absolute/path/image.jpg --prompt "object of interest"
+```
+
+Windows with CUDA:
+
+```powershell
+sam3-cli image --version sam3.1 --device cuda --image C:\absolute\path\image.jpg --prompt "object of interest"
+```
+
+## Quick start
+
+```bash
+sam3-cli setup --language en
+sam3-cli doctor
+sam3-cli download --version sam3.1
+sam3-cli image --version sam3.1 --device cpu --image /absolute/path/image.jpg --prompt "object of interest"
+```
+
+## Output contract
+
+Every successful segmentation run produces:
+
+- an overlay PNG
+- a JSON metadata file
+- a crop directory
+
+The JSON metadata preserves bounding boxes, scores, crop paths, and other run settings.
+The crop directory is usually the best follow-up input for OCR or fine-grained visual analysis.
+
+## Important parameters
+
+- `--device auto|cpu|cuda|mps`
+- `--threshold`
+- `--mask-threshold`
+- `--resolution`
+- `--top-k`
+- `--crop-padding`
+- `--alpha`
+- `--checkpoint`
+
+Example:
+
+```bash
+sam3-cli image \
+  --version sam3.1 \
+  --device cpu \
+  --threshold 0.5 \
+  --mask-threshold 0.5 \
+  --resolution 1008 \
+  --top-k 0 \
+  --crop-padding 5 \
+  --alpha 120 \
+  --image /absolute/path/image.jpg \
+  --prompt "object of interest"
+```
+
+## Agent guardrails
+
+- use `sam3-cli` instead of ad-hoc Python entry points
+- run `doctor` before the first real segmentation in a new shell
+- do not assume model weights are bundled with the repo
+- on Apple Silicon, prefer `cpu`
+- prefer the JSON file and crop directory over the overlay alone for downstream work
+- do not commit weights, private input images, or generated outputs
+
+## Hugging Face and model access
+
+Meta SAM 3.1 weights are hosted separately from this repository.
+This repo does not ship them.
+
+If `sam3-cli download --version sam3.1` fails with `401`, treat that as an access or authentication issue against the gated Hugging Face model first.
+
+## Known limitations
+
+- macOS Apple Silicon is currently a stability-first path via `cpu`
+- `mps` should not be treated as the production default yet
+- video and multiplex workflows are not the default product surface in this repository
+- the image path can emit checkpoint `missing_keys` warnings while still producing correct output
+
+## Skills ecosystem
+
+Repository listing check:
+
+```bash
+npx -y skills add codecell-germany/meta-sam-3-1-image-agent-skill -l
+```
+
+Global install example:
+
+```bash
+npx -y skills add codecell-germany/meta-sam-3-1-image-agent-skill -g --skill sam3-image-cli -a '*' -y
+```
+
+npm skill installer example:
+
+```bash
+npm install -g @codecell-germany/meta-sam-3-1-image-agent-skill
+sam3-image-skill install --force
+```
+
+Direct npx installer example:
+
+```bash
+npx -y -p @codecell-germany/meta-sam-3-1-image-agent-skill sam3-image-skill install --force
+```
+
+## Release verification
+
+```bash
+sam3-cli --help
+sam3-cli setup --language en
+sam3-cli doctor
+npm run test:unit
+npm pack --dry-run
+npm run test:release
+```
+
+## References
+
+- `skills/sam3-image-cli/SKILL.md`
+- `skills/sam3-image-cli/references/overview.md`
+- `skills/sam3-image-cli/references/agent-onboarding.md`
+- `skills/sam3-image-cli/references/command-cheatsheet.md`
+- `skills/sam3-image-cli/references/macos-first-run.md`
+- `skills/sam3-image-cli/references/windows-cuda-first-run.md`
+- `skills/sam3-image-cli/references/output-contract.md`
+- `knowledge/ARCHITECTURE.md`
+- `knowledge/PLATFORM_SUPPORT.md`
+- `knowledge/OUTPUT_CONTRACT.md`
+- `knowledge/KNOWN_LIMITATIONS.md`
+- `knowledge/RELEASE_CHECKLIST.md`
+
+---
+
+# Deutsch
+
+## Zweck
+
+`meta-sam-3-1-image-agent-skill` macht aus Meta SAM 3.1 eine agententaugliche Bild-Reduktionsschicht.
+
+Das praktische Ziel ist nicht nur Segmentierung, sondern bessere Folgearbeit mit Bildern:
+
+- bessere OCR auf relevanten Bildausschnitten statt auf dem ganzen Bild
+- bessere Objekt- oder Komponentenanalysen über Crops
+- bessere Automatisierung über strukturierte JSON-Metadaten
+- bessere Vergleichbarkeit, weil mehrere Segmentierungsläufe nebeneinander existieren können, ohne sich zu überschreiben
+
+Dieses Repo kombiniert:
+
+- den Meta-SAM-3.1-Modellcode
+- eine lokale CLI-Oberfläche rund um `sam3-cli`
+- einen Skill unter `skills/sam3-image-cli/`
+- Setup-Anleitungen für macOS auf Apple Silicon und Windows mit NVIDIA/CUDA
+
+## Öffentliche Release-Oberflächen
+
+- GitHub-Repo:
+  `codecell-germany/meta-sam-3-1-image-agent-skill`
+- npm-Paket:
+  `@codecell-germany/meta-sam-3-1-image-agent-skill`
+- CLI-Binary:
+  `sam3-cli`
+- Skill-Installer-Binary:
+  `sam3-image-skill`
+- Skill-Name:
+  `sam3-image-cli`
+
+## Was das Repo enthält
+
+- eine lokale Segmentierungs-CLI
+- einen Skill, der Agenten die Installation und Nutzung erklärt
+- plattformspezifische Setup-Anleitungen
+- Referenzen für Onboarding und Ergebnisweiterverarbeitung
+- Knowledge-Dateien für Architektur, Plattformsupport, Grenzen und Release-Hygiene
+
+## Warum das für Agenten wichtig ist
+
+Viele Bildaufgaben werden besser, wenn das Originalbild zuerst auf die relevantesten Regionen reduziert wird.
+
+Statt ein volles, verrauschtes Bild direkt an OCR oder visuelles Reasoning zu geben, kann ein Agent:
+
+1. das Bild mit Meta SAM 3.1 segmentieren
+2. das Overlay für eine schnelle Sichtprüfung behalten
+3. die JSON-Datei für strukturierte Weiterleitung nutzen
+4. OCR oder Bildanalyse auf den erzeugten Crops ausführen
+
+Dadurch entsteht ein neuer Arbeitsmodus für Agenten:
+weniger Rauschen, kleinere Bildregionen, klarere Semantik und bessere Folgeautomatisierung.
+
+## Unterstützte Plattformstrategie
+
+- macOS Apple Silicon:
+  verifizierter Bildpfad über `cpu`
+- Windows mit NVIDIA/CUDA:
+  geplanter Hochleistungs-Pfad über `cuda`
+
+Wichtig:
+
+- dieses Repo ist bewusst auf Bildsegmentierung ausgerichtet
+- Video und Multiplex-Tracking sind hier nicht die Standard-Produktgeschichte
+- Modellgewichte liegen nicht in diesem Repo
+
+## Installation
+
+### 1. Repo klonen
+
+```bash
+git clone https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill.git
+cd meta-sam-3-1-image-agent-skill
+```
+
+### 2. Virtuelle Umgebung anlegen und aktivieren
+
+macOS oder Linux:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+```
+
+### 3. PyTorch installieren
+
+macOS Apple Silicon:
+
+```bash
+pip install torch==2.10.0 torchvision==0.25.0
+```
+
+Windows mit CUDA:
+
+```powershell
+pip install torch==2.10.0 torchvision --index-url https://download.pytorch.org/whl/cu128
+```
+
+### 4. Repo installieren
+
+```bash
+pip install -e .
+pip install einops
+```
+
+### 5. CLI prüfen
+
+```bash
+sam3-cli --help
+sam3-cli doctor
+```
+
+### 6. Optional den Skill-Payload für Codex installieren
+
+```bash
+npm install -g @codecell-germany/meta-sam-3-1-image-agent-skill
+sam3-image-skill install --force
+```
+
+Oder ohne globale npm-Installation:
+
+```bash
+npx -y -p @codecell-germany/meta-sam-3-1-image-agent-skill sam3-image-skill install --force
+```
+
+Dabei werden installiert:
+
+- der Skill-Payload unter `~/.codex/skills/sam3-image-cli`
+- die Runtime-Dateien unter `~/.codex/tools/sam3-image-cli`
+- CLI-Shims unter `~/.codex/bin/`
+  - `sam3-cli`
+  - `sam3-cli.cmd`
+  - `sam3-cli.ps1`
+
+## Kanonische First-Run-Reihenfolge
+
+### 1. Öffentliche CLI prüfen
+
+```bash
+sam3-cli --help
+```
+
+### 2. Umgebung prüfen
+
+```bash
+sam3-cli doctor
+```
+
+### 3. Wenn das Setup unvollständig ist, Setup-Guide ausgeben
+
+```bash
+sam3-cli setup --language de
+sam3-cli setup --platform macos-apple-silicon --language de
+sam3-cli setup --platform windows-cuda --language de
+```
+
+### 4. Hugging-Face-Zugriff sicherstellen
+
+Der Nutzer braucht freigeschalteten Zugriff auf das gated Modell:
+
+- `facebook/sam3.1`
+
+### 5. Checkpoint herunterladen
+
+```bash
+sam3-cli download --version sam3.1
+```
+
+### 6. Erste echte Segmentierung ausführen
+
+macOS Apple Silicon:
+
+```bash
+sam3-cli image --version sam3.1 --device cpu --image /absoluter/pfad/bild.jpg --prompt "object of interest"
+```
+
+Windows mit CUDA:
+
+```powershell
+sam3-cli image --version sam3.1 --device cuda --image C:\absoluter\pfad\bild.jpg --prompt "object of interest"
+```
+
+## Schnellstart
+
+```bash
+sam3-cli setup --language de
+sam3-cli doctor
+sam3-cli download --version sam3.1
+sam3-cli image --version sam3.1 --device cpu --image /absoluter/pfad/bild.jpg --prompt "object of interest"
+```
+
+## Ergebnisvertrag
+
+Jeder erfolgreiche Segmentierungslauf erzeugt:
+
+- ein Overlay-PNG
+- eine JSON-Metadatendatei
+- einen Crop-Ordner
+
+Die JSON-Datei enthält Bounding-Boxes, Scores, Crop-Pfade und Laufparameter.
+Der Crop-Ordner ist meist der beste Folgeinput für OCR oder feinkörnige Bildanalyse.
+
+## Wichtige Parameter
+
+- `--device auto|cpu|cuda|mps`
+- `--threshold`
+- `--mask-threshold`
+- `--resolution`
+- `--top-k`
+- `--crop-padding`
+- `--alpha`
+- `--checkpoint`
+
+Beispiel:
+
+```bash
+sam3-cli image \
+  --version sam3.1 \
+  --device cpu \
+  --threshold 0.5 \
+  --mask-threshold 0.5 \
+  --resolution 1008 \
+  --top-k 0 \
+  --crop-padding 5 \
+  --alpha 120 \
+  --image /absoluter/pfad/bild.jpg \
+  --prompt "object of interest"
+```
+
+## Agentische Guardrails
+
+- `sam3-cli` statt ad-hoc Python-Einstiegspunkte verwenden
+- vor der ersten echten Segmentierung in einer neuen Shell `doctor` ausführen
+- nicht annehmen, dass Modellgewichte im Repo enthalten sind
+- auf Apple Silicon `cpu` bevorzugen
+- für Folgearbeit JSON und Crop-Ordner dem Overlay vorziehen
+- keine Gewichte, privaten Bilder oder generierten Outputs committen
+
+## Hugging Face und Modellzugriff
+
+Die Meta-SAM-3.1-Gewichte werden separat von diesem Repo gehostet.
+Dieses Repo liefert sie nicht mit.
+
+Wenn `sam3-cli download --version sam3.1` mit `401` scheitert, sollte das zuerst als Zugriffs- oder Authentifizierungsproblem gegen das gated Hugging-Face-Modell behandelt werden.
+
+## Bekannte Grenzen
+
+- macOS Apple Silicon ist aktuell ein Stabilitätspfad über `cpu`
+- `mps` ist derzeit kein belastbarer Produktions-Default
+- Video- und Multiplex-Workflows sind hier nicht die Standard-Produktoberfläche
+- der Bildpfad kann `missing_keys`-Warnungen beim Checkpoint-Laden ausgeben und trotzdem korrekt funktionieren
+
+## Skills-Ökosystem
+
+Repo-Listing prüfen:
+
+```bash
+npx -y skills add codecell-germany/meta-sam-3-1-image-agent-skill -l
+```
+
+Globales Installationsbeispiel:
+
+```bash
+npx -y skills add codecell-germany/meta-sam-3-1-image-agent-skill -g --skill sam3-image-cli -a '*' -y
+```
+
+npm-Skill-Installer-Beispiel:
+
+```bash
+npm install -g @codecell-germany/meta-sam-3-1-image-agent-skill
+sam3-image-skill install --force
+```
+
+Direktes `npx`-Installer-Beispiel:
+
+```bash
+npx -y -p @codecell-germany/meta-sam-3-1-image-agent-skill sam3-image-skill install --force
+```
+
+## Release-Verifikation
+
+```bash
+sam3-cli --help
+sam3-cli setup --language de
+sam3-cli doctor
+npm run test:unit
+npm pack --dry-run
+npm run test:release
+```
+
+## Referenzen
+
+- `skills/sam3-image-cli/SKILL.md`
+- `skills/sam3-image-cli/references/overview.md`
+- `skills/sam3-image-cli/references/agent-onboarding.md`
+- `skills/sam3-image-cli/references/command-cheatsheet.md`
+- `skills/sam3-image-cli/references/macos-first-run.md`
+- `skills/sam3-image-cli/references/windows-cuda-first-run.md`
+- `skills/sam3-image-cli/references/output-contract.md`
+- `knowledge/ARCHITECTURE.md`
+- `knowledge/PLATFORM_SUPPORT.md`
+- `knowledge/OUTPUT_CONTRACT.md`
+- `knowledge/KNOWN_LIMITATIONS.md`
+- `knowledge/RELEASE_CHECKLIST.md`

@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved
 
 # pyre-unsafe
 
 import os
+from importlib.resources import files
 from typing import Optional
 
-import pkg_resources
 import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
 from iopath.common.file_io import g_pathmgr
+from sam3.runtime_utils import normalize_device
 from sam3.model.decoder import (
     DecoupledTransformerDecoderLayerv2,
     SimpleRoPEAttention,
@@ -37,14 +40,9 @@ from sam3.model.model_misc import (
 from sam3.model.multiplex_utils import MultiplexController
 from sam3.model.necks import Sam3DualViTDetNeck, Sam3TriViTDetNeck
 from sam3.model.position_encoding import PositionEmbeddingSine
-from sam3.model.sam1_task_predictor import SAM3InteractiveImagePredictor
 from sam3.model.sam3_image import Sam3Image, Sam3ImageOnVideoMultiGPU
-from sam3.model.sam3_tracking_predictor import Sam3TrackerPredictor
-from sam3.model.sam3_video_inference import Sam3VideoInferenceWithInstanceInteractivity
-from sam3.model.sam3_video_predictor import Sam3VideoPredictorMultiGPU
 from sam3.model.text_encoder_ve import VETextEncoder
 from sam3.model.tokenizer_ve import SimpleTokenizer
-from sam3.model.video_tracking_multiplex import VideoTrackingDynamicMultiplex
 from sam3.model.vitdet import ViT
 from sam3.model.vl_combiner import SAM3VLBackbone, SAM3VLBackboneTri, TriHeadVisionOnly
 from sam3.sam.transformer import RoPEAttention
@@ -61,6 +59,10 @@ def _setup_tf32() -> None:
 
 
 _setup_tf32()
+
+
+def _default_bpe_path() -> str:
+    return str(files("sam3").joinpath("assets/bpe_simple_vocab_16e6.txt.gz"))
 
 
 def _create_position_encoding(precompute_resolution=None):
@@ -460,6 +462,8 @@ def build_tracker(
         vision_backbone = _create_vision_backbone(compile_mode=compile_mode)
         backbone = SAM3VLBackbone(scalp=1, visual=vision_backbone, text=None)
     # Create the Tracker module
+    from sam3.model.sam3_tracking_predictor import Sam3TrackerPredictor
+
     model = Sam3TrackerPredictor(
         image_size=1008,
         num_maskmem=7,
@@ -563,8 +567,8 @@ def _load_checkpoint(model, checkpoint_path):
 
 def _setup_device_and_mode(model, device, eval_mode):
     """Setup model device and evaluation mode."""
-    if device == "cuda":
-        model = model.cuda()
+    device = normalize_device(device)
+    model = model.to(device=device)
     if eval_mode:
         model.eval()
     return model
@@ -572,7 +576,7 @@ def _setup_device_and_mode(model, device, eval_mode):
 
 def build_sam3_image_model(
     bpe_path=None,
-    device="cuda" if torch.cuda.is_available() else "cpu",
+    device="auto",
     eval_mode=True,
     checkpoint_path=None,
     load_from_HF=True,
@@ -596,9 +600,7 @@ def build_sam3_image_model(
         A SAM3 image model
     """
     if bpe_path is None:
-        bpe_path = pkg_resources.resource_filename(
-            "sam3", "assets/bpe_simple_vocab_16e6.txt.gz"
-        )
+        bpe_path = _default_bpe_path()
 
     # Create visual components
     compile_mode = "default" if compile else None
@@ -628,6 +630,8 @@ def build_sam3_image_model(
     # Create geometry encoder
     input_geometry_encoder = _create_geometry_encoder()
     if enable_inst_interactivity:
+        from sam3.model.sam1_task_predictor import SAM3InteractiveImagePredictor
+
         sam3_pvs_base = build_tracker(apply_temporal_disambiguation=False)
         inst_predictor = SAM3InteractiveImagePredictor(sam3_pvs_base)
     else:
@@ -681,7 +685,7 @@ def build_sam3_video_model(
     geo_encoder_use_img_cross_attn: bool = True,
     strict_state_dict_loading: bool = True,
     apply_temporal_disambiguation: bool = True,
-    device="cuda" if torch.cuda.is_available() else "cpu",
+    device="auto",
     compile=False,
 ) -> Sam3VideoInferenceWithInstanceInteractivity:
     """
@@ -695,9 +699,7 @@ def build_sam3_video_model(
         Sam3VideoInferenceWithInstanceInteractivity: The instantiated dense tracking model
     """
     if bpe_path is None:
-        bpe_path = pkg_resources.resource_filename(
-            "sam3", "assets/bpe_simple_vocab_16e6.txt.gz"
-        )
+        bpe_path = _default_bpe_path()
 
     # Build Tracker module
     tracker = build_tracker(apply_temporal_disambiguation=apply_temporal_disambiguation)
@@ -739,6 +741,10 @@ def build_sam3_video_model(
     )
 
     # Build the main SAM3 video model
+    from sam3.model.sam3_video_inference import (
+        Sam3VideoInferenceWithInstanceInteractivity,
+    )
+
     if apply_temporal_disambiguation:
         model = Sam3VideoInferenceWithInstanceInteractivity(
             detector=detector,
@@ -810,11 +816,21 @@ def build_sam3_video_model(
         if unexpected_keys:
             print(f"Unexpected keys: {unexpected_keys}")
 
-    model.to(device=device)
+    model.to(device=normalize_device(device))
     return model
 
 
-def build_sam3_video_predictor(*model_args, gpus_to_use=None, **model_kwargs):
+def build_sam3_video_predictor(
+    *model_args, gpus_to_use=None, device="auto", **model_kwargs
+):
+    resolved_device = normalize_device(device)
+    if resolved_device != "cuda":
+        raise RuntimeError(
+            "Der Upstream-Video-Predictor ist aktuell CUDA-zentriert. "
+            "Auf macOS/Apple Silicon ist hier nur die Image-Nutzung sinnvoll unterstützt."
+        )
+    from sam3.model.sam3_video_predictor import Sam3VideoPredictorMultiGPU
+
     return Sam3VideoPredictorMultiGPU(
         *model_args, gpus_to_use=gpus_to_use, **model_kwargs
     )
@@ -941,7 +957,7 @@ def build_sam3_multiplex_video_model(
     use_fa3: bool = False,
     use_rope_real: bool = False,
     strict_state_dict_loading: bool = True,
-    device="cuda" if torch.cuda.is_available() else "cpu",
+    device="auto",
     compile=False,
 ):
     """
@@ -1063,7 +1079,7 @@ def build_sam3_multiplex_video_model(
         if unexpected_keys:
             print(f"Unexpected keys: {unexpected_keys}")
 
-    model.to(device=device)
+    model.to(device=normalize_device(device))
     return model
 
 
@@ -1079,6 +1095,7 @@ def build_sam3_multiplex_video_predictor(
     session_expiration_sec: int = 1200,
     default_output_prob_thresh: float = 0.5,
     async_loading_frames: bool = True,
+    device: str = "auto",
 ):
     """
     Build a fully-initialized Sam3MultiplexVideoPredictor.
@@ -1105,9 +1122,7 @@ def build_sam3_multiplex_video_predictor(
         Sam3MultiplexVideoPredictor: The fully-initialized predictor
     """
     if bpe_path is None:
-        bpe_path = pkg_resources.resource_filename(
-            "sam3", "assets/bpe_simple_vocab_16e6.txt.gz"
-        )
+        bpe_path = _default_bpe_path()
 
     from sam3.model.sam3_multiplex_base import Sam3MultiplexPredictorWrapper
     from sam3.model.sam3_multiplex_detector import Sam3MultiplexDetector
@@ -1227,7 +1242,12 @@ def build_sam3_multiplex_video_predictor(
                 f"Unexpected keys ({len(unexpected_keys)}): {unexpected_keys[:10]}..."
             )
 
-    demo_model.cuda().eval()
+    resolved_device = normalize_device(device)
+    if resolved_device != "cuda":
+        raise RuntimeError(
+            "SAM 3.1 Object Multiplex benötigt in diesem Upstream-Stand weiterhin CUDA."
+        )
+    demo_model.to(device=resolved_device).eval()
 
     # Wrap in predictor
     predictor = Sam3MultiplexVideoPredictor(
@@ -1253,6 +1273,7 @@ def build_sam3_predictor(
     use_fa3: bool = True,
     use_rope_real: bool = True,
     async_loading_frames: bool = True,
+    device: str = "auto",
     **kwargs,
 ):
     """
@@ -1304,6 +1325,7 @@ def build_sam3_predictor(
             compile=compile,
             warm_up=warm_up,
             async_loading_frames=async_loading_frames,
+            device=device,
             **kwargs,
         )
     elif version == "sam3":
@@ -1312,6 +1334,7 @@ def build_sam3_predictor(
             bpe_path=bpe_path,
             compile=compile,
             async_loading_frames=async_loading_frames,
+            device=device,
             **kwargs,
         )
     else:

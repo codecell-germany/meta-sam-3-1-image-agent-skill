@@ -8,6 +8,8 @@ from typing import Optional
 import torch
 from torch import nn
 
+from sam3.runtime_utils import get_default_device
+
 
 class PositionEmbeddingSine(nn.Module):
     """
@@ -51,8 +53,11 @@ class PositionEmbeddingSine(nn.Module):
                 (int(precompute_resolution // 28), int(precompute_resolution // 28)),
                 (precompute_resolution // 32, precompute_resolution // 32),
             ]
+            precompute_device = torch.device(
+                "cuda" if get_default_device() == "cuda" else "cpu"
+            )
             for size in precompute_sizes:
-                tensors = torch.zeros((1, 1) + size, device="cuda")
+                tensors = torch.zeros((1, 1) + size, device=precompute_device)
                 self.forward(tensors)
                 # further clone and detach it in the cache (just to be safe)
                 self.cache[size] = self.cache[size].clone().detach()

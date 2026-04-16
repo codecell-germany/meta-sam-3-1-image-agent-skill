@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
+
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "Fehler: Die virtuelle Umgebung fehlt. Erwartet: $PYTHON_BIN" >&2
+  exit 1
+fi
+
+# PyTorch auf Apple Silicon deckt noch nicht alle Operatoren nativ über MPS ab.
+# Wenn der Nutzer nichts explizit vorgibt, erlauben wir den CPU-Fallback.
+export PYTORCH_ENABLE_MPS_FALLBACK="${PYTORCH_ENABLE_MPS_FALLBACK:-1}"
+
+exec "$PYTHON_BIN" "$ROOT_DIR/sam3_cli.py" "$@"

@@ -1,0 +1,61 @@
+{
+  "name": "@codecell-germany/meta-sam-3-1-image-agent-skill",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Agent-first Meta SAM 3.1 skill payload and publish metadata for image reduction, OCR preparation, and downstream visual analysis workflows",
+  "keywords": [
+    "meta",
+    "sam3.1",
+    "sam3",
+    "segment-anything",
+    "image-segmentation",
+    "ocr",
+    "agent",
+    "codex-skill",
+    "computer-vision"
+  ],
+  "license": "MIT",
+  "author": "Nikolas Gottschol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill.git"
+  },
+  "homepage": "https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill#readme",
+  "bugs": {
+    "url": "https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill/issues"
+  },
+  "bin": {
+    "sam3-image-skill": "scripts/npm-skill-installer.mjs"
+  },
+  "scripts": {
+    "pack:dry-run": "npm pack --dry-run",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test": "npm run test:unit && npm run test:release",
+    "test:release": "node scripts/release-smoke.mjs"
+  },
+  "files": [
+    "sam3/__init__.py",
+    "sam3/logger.py",
+    "sam3/model/**/*.py",
+    "sam3/perflib/**/*.py",
+    "sam3/sam/**/*.py",
+    "sam3/assets/bpe_simple_vocab_16e6.txt.gz",
+    "sam3/model_builder.py",
+    "sam3/runtime_utils.py",
+    "sam3/visualization_utils.py",
+    "sam3_cli.py",
+    "pyproject.toml",
+    "skills/**",
+    "knowledge/**",
+    "scripts/npm-skill-installer.mjs",
+    "scripts/release-smoke.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

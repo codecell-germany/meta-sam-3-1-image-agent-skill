@@ -8,16 +8,24 @@ import PIL
 import torch
 from sam3.model import box_ops
 from sam3.model.data_misc import FindStage, interpolate
+from sam3.runtime_utils import normalize_device
 from torchvision.transforms import v2
 
 
 class Sam3Processor:
     """ """
 
-    def __init__(self, model, resolution=1008, device="cuda", confidence_threshold=0.5):
+    def __init__(
+        self,
+        model,
+        resolution=1008,
+        device="auto",
+        confidence_threshold=0.5,
+        mask_threshold=0.5,
+    ):
         self.model = model
         self.resolution = resolution
-        self.device = device
+        self.device = normalize_device(device)
         self.transform = v2.Compose(
             [
                 v2.ToDtype(torch.uint8, scale=True),
@@ -27,10 +35,11 @@ class Sam3Processor:
             ]
         )
         self.confidence_threshold = confidence_threshold
+        self.mask_threshold = mask_threshold
 
         self.find_stage = FindStage(
-            img_ids=torch.tensor([0], device=device, dtype=torch.long),
-            text_ids=torch.tensor([0], device=device, dtype=torch.long),
+            img_ids=torch.tensor([0], device=self.device, dtype=torch.long),
+            text_ids=torch.tensor([0], device=self.device, dtype=torch.long),
             input_boxes=None,
             input_boxes_mask=None,
             input_boxes_label=None,
@@ -216,7 +225,7 @@ class Sam3Processor:
         ).sigmoid()
 
         state["masks_logits"] = out_masks
-        state["masks"] = out_masks > 0.5
+        state["masks"] = out_masks > self.mask_threshold
         state["boxes"] = boxes
         state["scores"] = out_probs
         return state

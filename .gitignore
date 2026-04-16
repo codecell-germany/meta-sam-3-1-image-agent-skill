@@ -148,6 +148,11 @@ tensorboard/
 .DS_Store
 Thumbs.db
 
+# Private local planning and examples
+Plans/
+for_segmentation/
+LOCAL_SETUP.md
+
 # BPE vocabulary files
 *.bpe
 *.vocab

@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as torchF
 from sam3.sam.rope import apply_rotary_enc, apply_rotary_enc_real, compute_axial_cis
 from sam3.sam.transformer import RoPEAttention
+from sam3.runtime_utils import get_default_device
 from torch import nn, Tensor
 from torch.nn.attention import sdpa_kernel, SDPBackend
 from torchvision.ops.roi_align import RoIAlign
@@ -279,8 +280,11 @@ class TransformerDecoder(nn.Module):
 
             if resolution is not None and stride is not None:
                 feat_size = resolution // stride
+                precompute_device = torch.device(
+                    "cuda" if get_default_device() == "cuda" else "cpu"
+                )
                 coords_h, coords_w = self._get_coords(
-                    feat_size, feat_size, device="cuda"
+                    feat_size, feat_size, device=precompute_device
                 )
                 self.compilable_cord_cache = (coords_h, coords_w)
                 self.compilable_stored_size = (feat_size, feat_size)

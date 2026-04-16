@@ -1,6 +1,8 @@
 include LICENSE
 include README.md
-recursive-include examples *.py
-recursive-include examples *.ipynb
-recursive-include examples *.md
-recursive-include tests *.py
+include pyproject.toml
+include sam3_cli.py
+include sam3-cli
+recursive-include skills *.md
+recursive-include skills *.yaml
+recursive-include knowledge *.md

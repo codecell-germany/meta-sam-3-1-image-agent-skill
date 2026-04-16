@@ -28,6 +28,7 @@ dependencies = [
     "timm>=1.0.17",
     "numpy>=1.26,<2",
     "tqdm",
+    "einops",
     "ftfy==6.1.1",
     "regex",
     "iopath>=0.1.10",
@@ -79,12 +80,18 @@ train = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/facebookresearch/sam3"
-"Bug Tracker" = "https://github.com/facebookresearch/sam3/issues"
+"Homepage" = "https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill"
+"Bug Tracker" = "https://github.com/codecell-germany/meta-sam-3-1-image-agent-skill/issues"
+
+[project.scripts]
+sam3-cli = "sam3_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["sam3*"]
 exclude = ["build*", "scripts*", "examples*"]
+
+[tool.setuptools]
+py-modules = ["sam3_cli"]
 
 [tool.setuptools.package-data]
 sam3 = ["assets/*.txt.gz"]
