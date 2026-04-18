@@ -16,11 +16,13 @@ Use it especially when the task benefits from:
 - turning an image into a JSON-documented set of regions
 - comparing multiple segmentation runs without overwriting prior results
 - working with Meta SAM 3.1 through a stable terminal flow instead of ad-hoc notebooks
-- preparing cleaner downstream input for product lookup or replacement-part matching on Uni Elektro
+- preparing cleaner downstream input for later OCR, classification, or agentische Bildanalyse
 
 ## Preconditions
 
 - Treat `sam3-cli` as the public product surface.
+- This skill only owns setup, checkpoint handling, inference, and output usage for `sam3-cli`.
+- A higher-level meta workflow such as `cabinet-analysis-flow` defines when SAM is used inside a larger pipeline.
 - First verify that it exists:
   - `sam3-cli --help`
 - The skill payload can be installed through:
@@ -84,10 +86,6 @@ This is the correct first-run order:
    - overlay PNG for quick inspection
    - JSON file for agentic routing and structured follow-up
    - crop directory for OCR, classification, or finer visual inspection
-5. If the next step is product identification or replacement search on Uni Elektro:
-   - use the companion skill `unielektro-suche`
-   - prefer OCR or structured extraction from the crops first
-   - then use the cleaned identifiers, names, article hints, or Hager candidates against the Uni-Elektro suggest API
 
 ## Platform rules
 
@@ -110,7 +108,6 @@ This is the correct first-run order:
 - Use the overlay PNG for quick human validation.
 - Use the JSON file as the machine-readable source of truth.
 - Use the crops when OCR or object-specific analysis should run on reduced image areas instead of the full original image.
-- If the end goal is a Uni-Elektro product hit, run OCR or label extraction on the crops first and then hand the structured terms to `unielektro-suche`.
 - When multiple runs exist, compare the distinct result bundles rather than reusing only the latest file name.
 
 ## References

@@ -19,6 +19,10 @@ The product idea is simple:
 - Skill:
   `skills/sam3-image-cli/`
 
+The `sam3-image-cli` skill is intentionally a functional tool skill.
+It owns setup, checkpoint handling, inference, and output usage for `sam3-cli`.
+If a higher-level meta workflow uses SAM as one stage inside a larger pipeline, that orchestration belongs to the meta workflow, not to this repository.
+
 ## Main runtime flow
 
 1. `sam3-cli doctor` inspects the local runtime.
