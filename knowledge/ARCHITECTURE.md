@@ -25,6 +25,13 @@ The product idea is simple:
 2. `sam3-cli download --version sam3.1` ensures the checkpoint exists.
 3. `sam3-cli image ...` builds the model, applies text-prompt segmentation, and writes the output bundle.
 
+The image command can now also apply a CLI-level overlap filter for nested detections:
+
+- `--overlap-filter outer`
+- `--overlap-threshold 0.9`
+
+This path is intentionally deterministic for agent workflows that want to keep the larger outer region instead of relying only on raw model score suppression.
+
 ## Why this matters for agents
 
 Agents often do better when a large image is reduced into smaller, semantically relevant regions.

@@ -22,6 +22,8 @@
 - `sam3-cli setup --language en` works
 - `sam3-cli setup --language de` works
 - `sam3-cli doctor` works
+- overlap-filter path verified:
+  - `sam3-cli image --overlap-filter outer --overlap-threshold 0.9 ...`
 - `npm run test:unit` works
 - `npm run test:release` works
 - the installer creates `sam3-cli`, `sam3-cli.cmd`, and `sam3-cli.ps1`

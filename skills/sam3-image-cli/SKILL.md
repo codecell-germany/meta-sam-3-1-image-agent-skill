@@ -16,6 +16,7 @@ Use it especially when the task benefits from:
 - turning an image into a JSON-documented set of regions
 - comparing multiple segmentation runs without overwriting prior results
 - working with Meta SAM 3.1 through a stable terminal flow instead of ad-hoc notebooks
+- preparing cleaner downstream input for product lookup or replacement-part matching on Uni Elektro
 
 ## Preconditions
 
@@ -77,10 +78,16 @@ This is the correct first-run order:
    - `sam3-cli download --version sam3.1`
 3. Segment the image:
    - `sam3-cli image --version sam3.1 --device cpu --image /absolute/path/image.jpg --prompt "object of interest"`
+   - if nested detections should be suppressed, use:
+     `sam3-cli image ... --overlap-filter outer --overlap-threshold 0.9`
 4. Continue with the generated outputs:
    - overlay PNG for quick inspection
    - JSON file for agentic routing and structured follow-up
    - crop directory for OCR, classification, or finer visual inspection
+5. If the next step is product identification or replacement search on Uni Elektro:
+   - use the companion skill `unielektro-suche`
+   - prefer OCR or structured extraction from the crops first
+   - then use the cleaned identifiers, names, article hints, or Hager candidates against the Uni-Elektro suggest API
 
 ## Platform rules
 
@@ -95,6 +102,7 @@ This is the correct first-run order:
 - If checkpoint download fails with `401`, treat it as an access or authentication issue against the gated Hugging Face model.
 - Do not overwrite previous result bundles on purpose unless the user explicitly asks for that.
 - Prefer JSON plus crops over the overlay alone for any serious downstream workflow.
+- If nested or almost fully contained detections should not survive, prefer `--overlap-filter outer`.
 - Do not commit model weights, private images, or generated crops into Git.
 
 ## How to use the outputs
@@ -102,6 +110,7 @@ This is the correct first-run order:
 - Use the overlay PNG for quick human validation.
 - Use the JSON file as the machine-readable source of truth.
 - Use the crops when OCR or object-specific analysis should run on reduced image areas instead of the full original image.
+- If the end goal is a Uni-Elektro product hit, run OCR or label extraction on the crops first and then hand the structured terms to `unielektro-suche`.
 - When multiple runs exist, compare the distinct result bundles rather than reusing only the latest file name.
 
 ## References

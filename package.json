@@ -1,6 +1,6 @@
 {
   "name": "@codecell-germany/meta-sam-3-1-image-agent-skill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Agent-first Meta SAM 3.1 skill payload and publish metadata for image reduction, OCR preparation, and downstream visual analysis workflows",
   "keywords": [

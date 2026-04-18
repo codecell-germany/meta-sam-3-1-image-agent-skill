@@ -2,7 +2,7 @@
 
 # pyre-unsafe
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def build_sam3_image_model(*args, **kwargs):

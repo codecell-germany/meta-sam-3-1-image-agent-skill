@@ -11,6 +11,7 @@ Use it to:
 
 - reduce large or cluttered images to the most relevant regions
 - generate crops that can be fed into OCR or visual classification
+- prepare cleaner follow-up input for `unielektro-suche` when the task is product lookup or replacement matching on Uni Elektro
 - preserve a structured JSON description of detections
 - compare multiple segmentation runs without overwriting earlier output
 
@@ -30,6 +31,12 @@ Each image run produces a result bundle:
 - a crop directory
 
 The JSON and crops are the most useful downstream artifacts for agents.
+
+If the follow-up task is Uni-Elektro product search, the intended sequence is:
+
+1. segment the source image with `sam3-cli`
+2. extract text or product clues from the crops
+3. hand those cleaned search terms to the companion skill `unielektro-suche`
 
 ## Platform model
 

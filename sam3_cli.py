@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib
 import json
 import platform
@@ -119,10 +120,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="Zusätzlicher Pixel-Rand für die ausgeschnittenen Bounding-Box-Crops.",
     )
     image.add_argument(
+        "--overlap-filter",
+        default="off",
+        choices=["off", "outer"],
+        help=(
+            "Optionaler Overlap-Filter für verschachtelte Detections. "
+            "`outer` verwirft stark enthaltene innere Boxen und behält die äußere Region."
+        ),
+    )
+    image.add_argument(
+        "--overlap-threshold",
+        type=float,
+        default=0.9,
+        help=(
+            "Schwelle für den Overlap-Filter als Verhältnis zur kleineren Box "
+            "(0.0 bis 1.0)."
+        ),
+    )
+    image.add_argument(
         "--alpha",
         type=int,
         default=120,
         help="Overlay-Alpha zwischen 0 und 255.",
+    )
+    image.add_argument(
+        "--json-only",
+        action="store_true",
+        help="Leitet Zwischenlogs auf stderr um und schreibt nur das Ergebnis-JSON auf stdout.",
     )
     image.set_defaults(func=cmd_image)
 
@@ -173,6 +197,8 @@ def cmd_image(args: argparse.Namespace) -> int:
     torch, np, Image, _ = load_image_stack()
     build_sam3_image_model, download_ckpt_from_hf, Sam3Processor = load_image_runtime()
     device = choose_cli_device(args.device)
+    if not 0.0 <= args.overlap_threshold <= 1.0:
+        raise ValueError("--overlap-threshold muss zwischen 0.0 und 1.0 liegen.")
     image_path = Path(args.image).expanduser().resolve()
     if not image_path.exists():
         raise FileNotFoundError(f"Bild nicht gefunden: {image_path}")
@@ -180,79 +206,95 @@ def cmd_image(args: argparse.Namespace) -> int:
     checkpoint_path = args.checkpoint
     if checkpoint_path is None:
         checkpoint_path = download_ckpt_from_hf(version=args.version)
+    stdout_redirect = sys.stderr if args.json_only else None
+    with contextlib.redirect_stdout(stdout_redirect) if stdout_redirect else contextlib.nullcontext():
+        model = build_sam3_image_model(
+            device=device,
+            checkpoint_path=str(checkpoint_path),
+            load_from_HF=False,
+        )
+        processor = Sam3Processor(
+            model,
+            resolution=args.resolution,
+            device=device,
+            confidence_threshold=args.threshold,
+            mask_threshold=args.mask_threshold,
+        )
 
-    model = build_sam3_image_model(
-        device=device,
-        checkpoint_path=str(checkpoint_path),
-        load_from_HF=False,
-    )
-    processor = Sam3Processor(
-        model,
-        resolution=args.resolution,
-        device=device,
-        confidence_threshold=args.threshold,
-        mask_threshold=args.mask_threshold,
-    )
+        image = Image.open(image_path).convert("RGB")
+        state = processor.set_image(image)
+        state = processor.set_text_prompt(prompt=args.prompt, state=state)
 
-    image = Image.open(image_path).convert("RGB")
-    state = processor.set_image(image)
-    state = processor.set_text_prompt(prompt=args.prompt, state=state)
+        removed_detections: list[dict[str, Any]] = []
+        detections_before_filters = int(state["scores"].numel())
+        if args.overlap_filter != "off":
+            state, removed_detections = apply_overlap_filter(
+                state=state,
+                mode=args.overlap_filter,
+                overlap_threshold=args.overlap_threshold,
+            )
 
-    if args.top_k > 0 and int(state["scores"].numel()) > args.top_k:
-        state = select_top_k(state, args.top_k)
+        if args.top_k > 0 and int(state["scores"].numel()) > args.top_k:
+            state = select_top_k(state, args.top_k)
 
-    requested_output_path = (
-        Path(args.output).expanduser().resolve()
-        if args.output
-        else image_path.with_name(f"{image_path.stem}.sam3.overlay.png")
-    )
-    output_path = choose_unique_output_path(requested_output_path)
-    overlay = render_overlay(
-        image=image,
-        masks=state["masks"].detach().cpu(),
-        boxes=state["boxes"].detach().cpu(),
-        scores=state["scores"].detach().cpu(),
-        alpha=args.alpha,
-    )
-    overlay.save(output_path)
+        requested_output_path = (
+            Path(args.output).expanduser().resolve()
+            if args.output
+            else image_path.with_name(f"{image_path.stem}.sam3.overlay.png")
+        )
+        output_path = choose_unique_output_path(requested_output_path)
+        overlay = render_overlay(
+            image=image,
+            masks=state["masks"].detach().cpu(),
+            boxes=state["boxes"].detach().cpu(),
+            scores=state["scores"].detach().cpu(),
+            alpha=args.alpha,
+        )
+        overlay.save(output_path)
 
-    metadata_path = output_path.with_suffix(".json")
-    crops_dir = output_path.with_suffix("").with_name(
-        f"{output_path.with_suffix('').name}.crops"
-    )
-    detections = export_detections(
-        image=image,
-        source_path=image_path,
-        crops_dir=crops_dir,
-        masks=state["masks"].detach().cpu(),
-        boxes=state["boxes"].detach().cpu(),
-        scores=state["scores"].detach().cpu(),
-        crop_padding=args.crop_padding,
-    )
-    metadata = {
-        "image": str(image_path),
-        "prompt": args.prompt,
-        "device": device,
-        "checkpoint": str(checkpoint_path),
-        "overlay": str(output_path),
-        "crops_dir": str(crops_dir),
-        "resolution": args.resolution,
-        "threshold": args.threshold,
-        "mask_threshold": args.mask_threshold,
-        "top_k": args.top_k,
-        "crop_padding": args.crop_padding,
-        "detections": detections,
-    }
-    metadata_path.write_text(json.dumps(metadata, indent=2))
+        metadata_path = output_path.with_suffix(".json")
+        crops_dir = output_path.with_suffix("").with_name(
+            f"{output_path.with_suffix('').name}.crops"
+        )
+        detections = export_detections(
+            image=image,
+            source_path=image_path,
+            crops_dir=crops_dir,
+            masks=state["masks"].detach().cpu(),
+            boxes=state["boxes"].detach().cpu(),
+            scores=state["scores"].detach().cpu(),
+            crop_padding=args.crop_padding,
+        )
+        metadata = {
+            "image": str(image_path),
+            "prompt": args.prompt,
+            "device": device,
+            "checkpoint": str(checkpoint_path),
+            "overlay": str(output_path),
+            "crops_dir": str(crops_dir),
+            "resolution": args.resolution,
+            "threshold": args.threshold,
+            "mask_threshold": args.mask_threshold,
+            "top_k": args.top_k,
+            "crop_padding": args.crop_padding,
+            "overlap_filter": args.overlap_filter,
+            "overlap_threshold": args.overlap_threshold,
+            "detections_before_filters": detections_before_filters,
+            "removed_detections": removed_detections,
+            "detections": detections,
+        }
+        metadata_path.write_text(json.dumps(metadata, indent=2))
 
-    result = {
-        "output": str(output_path),
-        "json": str(metadata_path),
-        "crops_dir": str(crops_dir),
-        "detections": int(state["scores"].numel()),
-        "device": device,
-        "checkpoint": str(checkpoint_path),
-    }
+        result = {
+            "output": str(output_path),
+            "json": str(metadata_path),
+            "crops_dir": str(crops_dir),
+            "detections": int(state["scores"].numel()),
+            "detections_before_filters": detections_before_filters,
+            "removed_detections": removed_detections,
+            "device": device,
+            "checkpoint": str(checkpoint_path),
+        }
     print(json.dumps(result, indent=2))
     return 0
 
@@ -526,17 +568,107 @@ def output_bundle_exists(output_path: Path) -> bool:
     return output_path.exists() or metadata_path.exists() or crops_dir.exists()
 
 
+def box_area(box: list[float]) -> float:
+    return max(0.0, float(box[2]) - float(box[0])) * max(0.0, float(box[3]) - float(box[1]))
+
+
+def overlap_ratio_of_smaller_box(left: list[float], right: list[float]) -> float:
+    overlap_left = max(float(left[0]), float(right[0]))
+    overlap_top = max(float(left[1]), float(right[1]))
+    overlap_right = min(float(left[2]), float(right[2]))
+    overlap_bottom = min(float(left[3]), float(right[3]))
+    overlap_width = max(0.0, overlap_right - overlap_left)
+    overlap_height = max(0.0, overlap_bottom - overlap_top)
+    overlap_area = overlap_width * overlap_height
+    smaller_area = min(box_area(left), box_area(right))
+    if smaller_area <= 0:
+        return 0.0
+    return overlap_area / smaller_area
+
+
+def find_contained_box_removals(
+    boxes: list[list[float]], overlap_threshold: float
+) -> list[dict[str, Any]]:
+    removals: list[dict[str, Any]] = []
+    for inner_index, inner_box in enumerate(boxes):
+        inner_area = box_area(inner_box)
+        if inner_area <= 0:
+            continue
+
+        best_outer_index: int | None = None
+        best_outer_area = inner_area
+        best_overlap = 0.0
+
+        for outer_index, outer_box in enumerate(boxes):
+            if inner_index == outer_index:
+                continue
+            outer_area = box_area(outer_box)
+            if outer_area <= inner_area:
+                continue
+
+            overlap_ratio = overlap_ratio_of_smaller_box(inner_box, outer_box)
+            if overlap_ratio < overlap_threshold:
+                continue
+
+            if outer_area > best_outer_area or (
+                outer_area == best_outer_area and overlap_ratio > best_overlap
+            ):
+                best_outer_index = outer_index
+                best_outer_area = outer_area
+                best_overlap = overlap_ratio
+
+        if best_outer_index is not None:
+            removals.append(
+                {
+                    "removed_index": inner_index,
+                    "kept_index": best_outer_index,
+                    "relation": "contained_by_larger_box",
+                    "overlap_ratio_of_smaller": round(best_overlap, 6),
+                }
+            )
+
+    return removals
+
+
+def select_indices(state: dict, indices: list[int]) -> dict:
+    torch = importlib.import_module("torch")
+    index_tensor = torch.as_tensor(indices, device=state["scores"].device, dtype=torch.long)
+    state["scores"] = state["scores"][index_tensor]
+    state["boxes"] = state["boxes"][index_tensor]
+    state["masks"] = state["masks"][index_tensor]
+    if "masks_logits" in state:
+        state["masks_logits"] = state["masks_logits"][index_tensor]
+    return state
+
+
 def select_top_k(state: dict, top_k: int) -> dict:
     torch = importlib.import_module("torch")
     if top_k <= 0 or int(state["scores"].numel()) <= top_k:
         return state
 
     top_scores, top_indices = torch.topk(state["scores"], k=top_k)
+    state = select_indices(state, top_indices.detach().cpu().tolist())
     state["scores"] = top_scores
-    state["boxes"] = state["boxes"][top_indices]
-    state["masks"] = state["masks"][top_indices]
-    state["masks_logits"] = state["masks_logits"][top_indices]
     return state
+
+
+def apply_overlap_filter(
+    state: dict, mode: str, overlap_threshold: float
+) -> tuple[dict, list[dict[str, Any]]]:
+    if mode == "off" or int(state["scores"].numel()) <= 1:
+        return state, []
+
+    if mode != "outer":
+        raise ValueError(f"Unbekannter Overlap-Filter: {mode}")
+
+    boxes = state["boxes"].detach().cpu().tolist()
+    removals = find_contained_box_removals(boxes, overlap_threshold)
+    if not removals:
+        return state, []
+
+    removed_index_set = {entry["removed_index"] for entry in removals}
+    keep_indices = [index for index in range(len(boxes)) if index not in removed_index_set]
+    return select_indices(state, keep_indices), removals
 
 
 def export_detections(

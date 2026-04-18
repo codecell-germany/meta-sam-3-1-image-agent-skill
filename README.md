@@ -13,6 +13,7 @@ The practical goal is not only to segment images, but to help agents work better
 - better OCR on relevant image regions instead of the whole frame
 - better object- or component-level analysis through crops
 - better downstream automation through structured JSON metadata
+- better product lookup and replacement-part matching when cleaned crop results are handed to companion skills such as `unielektro-suche`
 - better iteration because multiple segmentation runs can coexist without overwriting each other
 
 This repository combines:
@@ -53,6 +54,7 @@ Instead of sending one noisy image into OCR or visual reasoning, an agent can:
 2. keep the overlay for quick validation
 3. use the JSON file for structured routing
 4. run OCR or visual analysis on the generated crops
+5. if the task is product search on Uni Elektro, pass the cleaned crop-derived terms into `unielektro-suche`
 
 That creates a new operating mode for agent workflows:
 less noise, smaller image regions, clearer semantics, and better follow-up automation.
@@ -212,6 +214,7 @@ Every successful segmentation run produces:
 
 The JSON metadata preserves bounding boxes, scores, crop paths, and other run settings.
 The crop directory is usually the best follow-up input for OCR or fine-grained visual analysis.
+When the end goal is Uni-Elektro product identification, the intended next step is OCR or structured extraction on the crops and then a follow-up search through `unielektro-suche`.
 
 ## Important parameters
 
@@ -221,8 +224,11 @@ The crop directory is usually the best follow-up input for OCR or fine-grained v
 - `--resolution`
 - `--top-k`
 - `--crop-padding`
+- `--overlap-filter off|outer`
+- `--overlap-threshold`
 - `--alpha`
 - `--checkpoint`
+- `--json-only`
 
 Example:
 
@@ -235,6 +241,8 @@ sam3-cli image \
   --resolution 1008 \
   --top-k 0 \
   --crop-padding 5 \
+  --overlap-filter outer \
+  --overlap-threshold 0.9 \
   --alpha 120 \
   --image /absolute/path/image.jpg \
   --prompt "object of interest"
@@ -329,6 +337,7 @@ Das praktische Ziel ist nicht nur Segmentierung, sondern bessere Folgearbeit mit
 - bessere OCR auf relevanten Bildausschnitten statt auf dem ganzen Bild
 - bessere Objekt- oder Komponentenanalysen über Crops
 - bessere Automatisierung über strukturierte JSON-Metadaten
+- bessere Produktsuche und Ersatzteilzuordnung, wenn bereinigte Crop-Ergebnisse an Begleit-Skills wie `unielektro-suche` übergeben werden
 - bessere Vergleichbarkeit, weil mehrere Segmentierungsläufe nebeneinander existieren können, ohne sich zu überschreiben
 
 Dieses Repo kombiniert:
@@ -369,6 +378,7 @@ Statt ein volles, verrauschtes Bild direkt an OCR oder visuelles Reasoning zu ge
 2. das Overlay für eine schnelle Sichtprüfung behalten
 3. die JSON-Datei für strukturierte Weiterleitung nutzen
 4. OCR oder Bildanalyse auf den erzeugten Crops ausführen
+5. bei Uni-Elektro-Produktsuche die bereinigten Crop-Begriffe an `unielektro-suche` weitergeben
 
 Dadurch entsteht ein neuer Arbeitsmodus für Agenten:
 weniger Rauschen, kleinere Bildregionen, klarere Semantik und bessere Folgeautomatisierung.
@@ -528,6 +538,7 @@ Jeder erfolgreiche Segmentierungslauf erzeugt:
 
 Die JSON-Datei enthält Bounding-Boxes, Scores, Crop-Pfade und Laufparameter.
 Der Crop-Ordner ist meist der beste Folgeinput für OCR oder feinkörnige Bildanalyse.
+Wenn das eigentliche Ziel eine Uni-Elektro-Produktsuche ist, sollte der nächste Schritt aus OCR oder strukturierter Extraktion auf den Crops bestehen und danach `unielektro-suche` verwenden.
 
 ## Wichtige Parameter
 
@@ -537,8 +548,11 @@ Der Crop-Ordner ist meist der beste Folgeinput für OCR oder feinkörnige Bildan
 - `--resolution`
 - `--top-k`
 - `--crop-padding`
+- `--overlap-filter off|outer`
+- `--overlap-threshold`
 - `--alpha`
 - `--checkpoint`
+- `--json-only`
 
 Beispiel:
 
@@ -551,6 +565,8 @@ sam3-cli image \
   --resolution 1008 \
   --top-k 0 \
   --crop-padding 5 \
+  --overlap-filter outer \
+  --overlap-threshold 0.9 \
   --alpha 120 \
   --image /absoluter/pfad/bild.jpg \
   --prompt "object of interest"

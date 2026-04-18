@@ -19,3 +19,11 @@ Video and multiplex tracking remain CUDA-centric in the current upstream state.
 
 The SAM 3.1 image path can emit `missing_keys` warnings while still completing a successful image segmentation run.
 This should be tracked and documented, but it is not the same as a hard runtime failure.
+
+## Overlap filtering is CLI-level policy
+
+`sam3-cli image --overlap-filter outer` is a deterministic post-filter for nested boxes.
+It is not the same as generic upstream NMS:
+
+- NMS usually keeps the higher-scored detection
+- the CLI overlap filter intentionally keeps the larger outer box when containment is strong

@@ -44,6 +44,8 @@ sam3-cli image \
   --resolution 1008 \
   --top-k 0 \
   --crop-padding 5 \
+  --overlap-filter outer \
+  --overlap-threshold 0.9 \
   --alpha 120 \
   --image /absolute/path/image.jpg \
   --prompt "object of interest"
@@ -57,5 +59,8 @@ sam3-cli image \
 - `--resolution`
 - `--top-k`
 - `--crop-padding`
+- `--overlap-filter off|outer`
+- `--overlap-threshold`
 - `--alpha`
 - `--checkpoint`
+- `--json-only`

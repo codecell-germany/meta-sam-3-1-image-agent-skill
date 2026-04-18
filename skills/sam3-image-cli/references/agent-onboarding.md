@@ -74,13 +74,13 @@ Treat it as a Hugging Face access or authentication issue against the gated mode
 macOS Apple Silicon:
 
 ```bash
-sam3-cli image --version sam3.1 --device cpu --image /absolute/path/image.jpg --prompt "object of interest"
+sam3-cli image --version sam3.1 --device cpu --overlap-filter outer --overlap-threshold 0.9 --image /absolute/path/image.jpg --prompt "object of interest"
 ```
 
 Windows with CUDA:
 
 ```bash
-sam3-cli image --version sam3.1 --device cuda --image C:\absolute\path\image.jpg --prompt "object of interest"
+sam3-cli image --version sam3.1 --device cuda --overlap-filter outer --overlap-threshold 0.9 --image C:\absolute\path\image.jpg --prompt "object of interest"
 ```
 
 ## What not to do
@@ -89,3 +89,5 @@ sam3-cli image --version sam3.1 --device cuda --image C:\absolute\path\image.jpg
 - do not commit model weights or example images
 - do not continue with OCR from the overlay alone when JSON and crops exist
 - do not assume the checkpoint is bundled with the Git repo
+- do not search Uni Elektro from the raw full image when the SAM crops already isolate the relevant component; pass the cleaned crop-derived terms into `unielektro-suche`
+- if nested detections should collapse into one outer region, do not improvise a manual bbox edit; use `--overlap-filter outer`
